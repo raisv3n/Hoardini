@@ -1,3 +1,4 @@
+import CoreServices
 import XCTest
 @testable import HoardiniCore
 
@@ -26,5 +27,19 @@ final class SegmentsTests: XCTestCase {
     func testSanitizeBlocksTraversal() {
         XCTAssertEqual(Probe.sanitize("../../etc/passwd"), "_.._etc_passwd")
         XCTAssertEqual(Probe.sanitize("..."), "download")
+    }
+
+    func testSanitizeStripsInvisibleCharacters() {
+        XCTAssertEqual(Probe.sanitize("photo\u{202E}gpj.command"), "photogpj.command")
+        XCTAssertEqual(Probe.sanitize("a%0Ab.txt"), "ab.txt")
+    }
+
+    func testQuarantineMarksFile() throws {
+        let f = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try Data("x".utf8).write(to: f)
+        defer { try? FileManager.default.removeItem(at: f) }
+        Quarantine.mark(f, source: URL(string: "https://example.com/x")!, referrer: "https://example.com/")
+        let props = try f.resourceValues(forKeys: [.quarantinePropertiesKey]).quarantineProperties
+        XCTAssertEqual(props?[kLSQuarantineAgentNameKey as String] as? String, "Hoardini")
     }
 }

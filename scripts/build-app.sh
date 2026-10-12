@@ -28,10 +28,11 @@ cat > "$STAGE/Contents/Info.plist" <<'PLIST'
   <key>CFBundleExecutable</key><string>Hoardini</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.5.3</string>
+  <key>CFBundleShortVersionString</key><string>0.5.4</string>
   <key>CFBundleVersion</key><string>1</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>NSHighResolutionCapable</key><true/>
+  <key>LSFileQuarantineEnabled</key><true/>
 </dict></plist>
 PLIST
 

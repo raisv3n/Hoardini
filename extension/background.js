@@ -2,15 +2,25 @@ const HOST = "com.hoardini.host";
 
 // ---------- hand-off to the native host ----------
 
-async function cookieHeader(url) {
+// Like the browser, SameSite=Strict cookies only go along when the request starts on the cookie's own site
+// (a page must not be able to make Hoardini fetch another site's URL with them). No referrer: not sent.
+function fromCookieSite(cookie, referrer) {
+  let host;
+  try { host = new URL(referrer).hostname; } catch { return false; }
+  const domain = cookie.domain.replace(/^\./, "");
+  return host === domain || host.endsWith("." + domain);
+}
+
+async function cookieHeader(url, referrer) {
   const cookies = await chrome.cookies.getAll({ url });
-  return cookies.map(c => `${c.name}=${c.value}`).join("; ");
+  return cookies.filter(c => c.sameSite !== "strict" || fromCookieSite(c, referrer))
+    .map(c => `${c.name}=${c.value}`).join("; ");
 }
 
 async function sendToHoardini({ url, referrer, kind = "file", filename = "" }) {
   const res = await chrome.runtime.sendNativeMessage(HOST, {
     url, referrer: referrer || "", kind, filename,
-    cookies: await cookieHeader(url),
+    cookies: await cookieHeader(url, referrer),
     userAgent: navigator.userAgent,
   });
   if (!res || !res.ok) throw new Error(res ? res.error : "no response from host");

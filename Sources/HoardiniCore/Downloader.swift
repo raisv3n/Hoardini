@@ -114,6 +114,7 @@ public final class Downloader: @unchecked Sendable {
 
         let got = await store.done
         guard got == length else { throw FetchError.sizeMismatch(expected: length, got: got) }
+        Quarantine.mark(partURL, source: probe.finalURL, referrer: headers["Referer"])
         if fm.fileExists(atPath: finalURL.path) { try fm.removeItem(at: finalURL) }
         try fm.moveItem(at: partURL, to: finalURL)
         try? fm.removeItem(at: stateURL)
@@ -227,6 +228,7 @@ public final class Downloader: @unchecked Sendable {
             throw error
         }
         progress(DownloadProgress(done: done, total: probe.length))
+        Quarantine.mark(partURL, source: probe.finalURL, referrer: headers["Referer"])
         if fm.fileExists(atPath: finalURL.path) { try fm.removeItem(at: finalURL) }
         try fm.moveItem(at: partURL, to: finalURL)
     }

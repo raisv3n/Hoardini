@@ -45,8 +45,8 @@ func deliverToApp(_ job: JobRequest) -> String? {
 }
 
 func runCLI(_ job: JobRequest, url: URL) -> String? {
-    var args = [url.absoluteString, "-o", (ProcessInfo.processInfo.environment["HOME"] ?? NSHomeDirectory()) + "/Downloads"]
-    for (name, value) in job.headers { args += ["-H", "\(name): \(value)"] }
+    // Headers (cookies included) go through a pipe: command-line arguments are visible to every user via `ps`.
+    var args = [url.absoluteString, "-o", (ProcessInfo.processInfo.environment["HOME"] ?? NSHomeDirectory()) + "/Downloads", "--headers-stdin"]
     if job.isHLS { args.append("--hls") }
     if let n = job.cleanFilename { args += ["--name", n] }
 
@@ -57,13 +57,18 @@ func runCLI(_ job: JobRequest, url: URL) -> String? {
     let p = Process()
     p.executableURL = exe
     p.arguments = args
-    p.standardInput = FileHandle.nullDevice
+    let pipe = Pipe()
+    p.standardInput = pipe
     p.standardOutput = FileHandle.nullDevice
     p.standardError = FileHandle.nullDevice
     do { try p.run() } catch { return "\(error)" }
+    let headerText = job.headers.map { "\($0.key): \($0.value)\n" }.joined()
+    try? pipe.fileHandleForWriting.write(contentsOf: Data(headerText.utf8))
+    try? pipe.fileHandleForWriting.close()
     return nil
 }
 
+signal(SIGPIPE, SIG_IGN)   // a CLI that exits early must not take the host down with it
 let fm = FileManager.default
 
 func handle(_ data: Data) -> [String: Any] {

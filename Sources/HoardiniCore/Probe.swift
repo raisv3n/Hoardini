@@ -94,9 +94,17 @@ public enum Probe {
         return plain
     }
 
+    /// Removes control (Cc) and format (Cf) characters.
+    public static func stripInvisible(_ s: String) -> String {
+        String(String.UnicodeScalarView(s.unicodeScalars.filter {
+            ![.control, .format].contains($0.properties.generalCategory)
+        }))
+    }
+
     static func sanitize(_ name: String) -> String {
         let decoded = name.removingPercentEncoding ?? name
-        var cleaned = decoded.replacingOccurrences(of: "/", with: "_")
+        // Control and invisible format characters (e.g. U+202E right-to-left override) can disguise the real extension.
+        var cleaned = stripInvisible(decoded).replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: ":", with: "_")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         while cleaned.hasPrefix(".") { cleaned.removeFirst() }

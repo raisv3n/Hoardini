@@ -1,7 +1,8 @@
 import Foundation
 import HoardiniCore
 
-// usage: hoardini <url> [-o dir] [-n connections] [-H "Name: value"]... [--name file] [--hls]
+// usage: hoardini <url> [-o dir] [-n connections] [-H "Name: value"]... [--headers-stdin] [--name file] [--hls]
+// --headers-stdin reads more "Name: value" lines from stdin, so cookies never appear in the process list.
 var args = Array(CommandLine.arguments.dropFirst())
 
 // hoardini convert <file.ts>...   : lossless remux to MP4 next to each file
@@ -26,11 +27,17 @@ if let o = take("-o") { dir = o }
 if let n = take("-n"), let v = Int(n) { conns = v }
 
 var headers: [String: String] = [:]
-while let h = take("-H") {
+func addHeader(_ h: String) {
     if let c = h.firstIndex(of: ":") {
         headers[String(h[..<c]).trimmingCharacters(in: .whitespaces)] =
             String(h[h.index(after: c)...]).trimmingCharacters(in: .whitespaces)
     }
+}
+while let h = take("-H") { addHeader(h) }
+if let i = args.firstIndex(of: "--headers-stdin") {
+    args.remove(at: i)
+    let input = String(decoding: FileHandle.standardInput.readDataToEndOfFile(), as: UTF8.self)
+    input.split(whereSeparator: \.isNewline).forEach { addHeader(String($0)) }
 }
 
 let name = take("--name")

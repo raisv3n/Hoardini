@@ -150,6 +150,7 @@ public final class HLSDownloader: @unchecked Sendable {
             try? FileManager.default.removeItem(at: partURL)
             throw error
         }
+        Quarantine.mark(partURL, source: url, referrer: headers["Referer"])
         try FileManager.default.moveItem(at: partURL, to: finalURL)
         return finalURL
     }

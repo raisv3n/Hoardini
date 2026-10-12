@@ -1,3 +1,4 @@
+import CoreServices
 import Foundation
 
 enum Net {
@@ -22,6 +23,22 @@ final class RedirectGuard: NSObject, URLSessionTaskDelegate {
             next.setValue(nil, forHTTPHeaderField: "Authorization")
         }
         completionHandler(next)
+    }
+}
+
+enum Quarantine {
+    /// Tags a downloaded file the way browsers do, so Gatekeeper checks it before it is opened.
+    static func mark(_ file: URL, source: URL, referrer: String?) {
+        var props: [String: Any] = [
+            kLSQuarantineAgentNameKey as String: "Hoardini",
+            kLSQuarantineTypeKey as String: kLSQuarantineTypeWebDownload as String,
+            kLSQuarantineDataURLKey as String: source,
+        ]
+        if let r = referrer.flatMap(URL.init(string:)) { props[kLSQuarantineOriginURLKey as String] = r }
+        var values = URLResourceValues()
+        values.quarantineProperties = props
+        var f = file
+        try? f.setResourceValues(values)
     }
 }
 

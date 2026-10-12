@@ -39,7 +39,7 @@ public struct JobRequest: Codable, Sendable, Equatable {
 
     public var cleanFilename: String? {
         guard let f = filename else { return nil }
-        let s = String(String.UnicodeScalarView(f.unicodeScalars.filter { !CharacterSet.controlCharacters.contains($0) }).prefix(150))
+        let s = String(Probe.stripInvisible(f).prefix(150))
             .trimmingCharacters(in: .whitespaces)
         return s.isEmpty ? nil : s
     }
