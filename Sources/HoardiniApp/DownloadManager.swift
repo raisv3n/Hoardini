@@ -205,7 +205,8 @@ final class DownloadManager: ObservableObject {
             do {
                 let out: URL
                 if req.isHLS {
-                    let d = HLSDownloader(url: url, directory: dir, headers: req.headers, filename: name)
+                    let d = HLSDownloader(url: url, directory: dir, headers: req.headers, filename: name,
+                                          variant: req.validVariant)
                     d.destinationHandler = onDest
                     out = try await d.run(progress: onProgress)
                 } else {

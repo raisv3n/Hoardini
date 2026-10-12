@@ -7,7 +7,7 @@ import HoardiniCore
 //   1. Hoardini.app installed -> write the job to its inbox (launching the app if needed).
 //   2. otherwise            -> start a detached `hoardini` command-line process.
 //
-// Request:  {"url", "referrer", "cookies": "a=b; c=d", "userAgent", "kind": "file"|"hls", "filename"}
+// Request:  {"url", "referrer", "cookies": "a=b; c=d", "userAgent", "kind": "file"|"hls", "filename", "variant"}
 // Response: {"ok": true} or {"ok": false, "error": "..."}
 
 func readMessage() -> Data? {
@@ -48,6 +48,7 @@ func runCLI(_ job: JobRequest, url: URL) -> String? {
     // Headers (cookies included) go through a pipe: command-line arguments are visible to every user via `ps`.
     var args = [url.absoluteString, "-o", (ProcessInfo.processInfo.environment["HOME"] ?? NSHomeDirectory()) + "/Downloads", "--headers-stdin"]
     if job.isHLS { args.append("--hls") }
+    if job.isHLS, let v = job.validVariant { args += ["--variant", v.absoluteString] }
     if let n = job.cleanFilename { args += ["--name", n] }
 
     let exe = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath()

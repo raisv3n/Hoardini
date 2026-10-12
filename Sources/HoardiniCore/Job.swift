@@ -8,20 +8,26 @@ public struct JobRequest: Codable, Sendable, Equatable {
     public var userAgent: String?
     public var kind: String?       // "file" | "hls"
     public var filename: String?
+    /// HLS only: the variant playlist picked in the popup, with `url` being its master.
+    public var variant: String?
 
     public init(url: String, referrer: String? = nil, cookies: String? = nil, userAgent: String? = nil,
-                kind: String? = nil, filename: String? = nil) {
+                kind: String? = nil, filename: String? = nil, variant: String? = nil) {
         self.url = url
         self.referrer = referrer
         self.cookies = cookies
         self.userAgent = userAgent
         self.kind = kind
         self.filename = filename
+        self.variant = variant
     }
 
     /// Only plain http(s) URLs with a host are accepted.
-    public var validURL: URL? {
-        guard let u = URL(string: url), let scheme = u.scheme?.lowercased(),
+    public var validURL: URL? { Self.httpURL(url) }
+    public var validVariant: URL? { variant.flatMap(Self.httpURL) }
+
+    static func httpURL(_ s: String) -> URL? {
+        guard let u = URL(string: s), let scheme = u.scheme?.lowercased(),
               scheme == "http" || scheme == "https", u.host != nil else { return nil }
         return u
     }

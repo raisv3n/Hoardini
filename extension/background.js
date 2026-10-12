@@ -17,9 +17,9 @@ async function cookieHeader(url, referrer) {
     .map(c => `${c.name}=${c.value}`).join("; ");
 }
 
-async function sendToHoardini({ url, referrer, kind = "file", filename = "" }) {
+async function sendToHoardini({ url, referrer, kind = "file", filename = "", variant = "" }) {
   const res = await chrome.runtime.sendNativeMessage(HOST, {
-    url, referrer: referrer || "", kind, filename,
+    url, referrer: referrer || "", kind, filename, variant,
     cookies: await cookieHeader(url, referrer),
     userAgent: navigator.userAgent,
   });
@@ -151,8 +151,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     return true;
   }
   if (msg.type === "download") {
-    const { url, referrer, kind, title } = msg.item;
-    sendToHoardini({ url, referrer, kind, filename: title })
+    const { url, referrer, kind, title, variant } = msg.item;
+    sendToHoardini({ url, referrer, kind, filename: title, variant })
       .then(() => reply({ ok: true }), e => reply({ ok: false, error: String(e.message || e) }));
     return true;
   }

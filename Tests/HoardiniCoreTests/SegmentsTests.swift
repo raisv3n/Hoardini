@@ -42,4 +42,42 @@ final class SegmentsTests: XCTestCase {
         let props = try f.resourceValues(forKeys: [.quarantinePropertiesKey]).quarantineProperties
         XCTAssertEqual(props?[kLSQuarantineAgentNameKey as String] as? String, "Hoardini")
     }
+
+    func testMasterWithSeparateAudio() {
+        let text = """
+        #EXTM3U
+        #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="aud-lo",NAME="low",DEFAULT=NO,URI="audio/lo.m3u8"
+        #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="aud-hi",NAME="high",DEFAULT=YES,URI="audio/hi.m3u8"
+        #EXT-X-STREAM-INF:AVERAGE-BANDWIDTH=900,BANDWIDTH=1000,AUDIO="aud-lo"
+        v/360.m3u8
+        #EXT-X-STREAM-INF:BANDWIDTH=5000,AUDIO="aud-hi"
+        v/1080.m3u8
+        """
+        let base = URL(string: "https://cdn.example/x/master.m3u8")!
+        guard case .master(let variants, let audio) = HLS.parse(text, base: base) else { return XCTFail("not a master") }
+        XCTAssertEqual(variants.map(\.bandwidth), [1000, 5000])
+        XCTAssertEqual(audio.count, 2)
+
+        let best = HLS.pick(variants, preferred: nil)!
+        XCTAssertEqual(best.url.absoluteString, "https://cdn.example/x/v/1080.m3u8")
+        XCTAssertEqual(HLS.audioURL(for: best, in: audio)?.absoluteString, "https://cdn.example/x/audio/hi.m3u8")
+
+        let low = HLS.pick(variants, preferred: URL(string: "https://cdn.example/x/v/360.m3u8"))!
+        XCTAssertEqual(HLS.audioURL(for: low, in: audio)?.absoluteString, "https://cdn.example/x/audio/lo.m3u8")
+    }
+
+    func testMasterWithMuxedAudioNeedsNoSeparateTrack() {
+        let text = """
+        #EXTM3U
+        #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="a",NAME="main",DEFAULT=YES
+        #EXT-X-STREAM-INF:BANDWIDTH=1000,AUDIO="a"
+        v.m3u8
+        #EXT-X-STREAM-INF:BANDWIDTH=2000
+        w.m3u8
+        """
+        guard case .master(let variants, let audio) = HLS.parse(text, base: URL(string: "https://e.x/m.m3u8")!) else {
+            return XCTFail("not a master")
+        }
+        for v in variants { XCTAssertNil(HLS.audioURL(for: v, in: audio)) }
+    }
 }

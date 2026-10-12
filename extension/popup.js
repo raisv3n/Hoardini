@@ -67,7 +67,8 @@ function row(item, candidates) {
   btn.textContent = "Download";
   btn.addEventListener("click", async () => {
     btn.disabled = true;
-    const chosen = { ...item, url: (quality && quality.value) || item.url, title: nameInput.value.trim() };
+    // Send the master, not the variant: only the master lists a separate audio track (e.g. Vimeo).
+    const chosen = { ...item, variant: (quality && quality.value) || "", title: nameInput.value.trim() };
     const res = await chrome.runtime.sendMessage({ type: "download", item: chosen });
     btn.textContent = res && res.ok ? "Sent ✓" : "Failed";
     if (res && !res.ok) { btn.title = res.error; btn.disabled = false; }
