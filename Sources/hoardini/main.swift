@@ -43,13 +43,23 @@ guard let raw = args.first, let url = URL(string: raw), url.scheme?.hasPrefix("h
 }
 
 let start = Date()
-var lastPrint = Date.distantPast
+final class Throttle: @unchecked Sendable {
+    private let lock = NSLock()
+    private var last = Date.distantPast
+    /// True at most once per `interval`, or always when `force` is set.
+    func fire(every interval: TimeInterval, force: Bool) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        guard force || Date().timeIntervalSince(last) > interval else { return false }
+        last = Date()
+        return true
+    }
+}
+let throttle = Throttle()
 let outDir = URL(fileURLWithPath: dir)
 let isHLS = forceHLS || url.pathExtension.lowercased() == "m3u8"
 do {
     let onProgress: @Sendable (DownloadProgress) -> Void = { p in
-        guard Date().timeIntervalSince(lastPrint) > 0.25 || p.done == p.total else { return }
-        lastPrint = Date()
+        guard throttle.fire(every: 0.25, force: p.done == p.total) else { return }
         let secs = max(Date().timeIntervalSince(start), 0.001)
         let mb = Double(p.done) / 1_048_576
         let pct = p.total.map { String(format: "%5.1f%%", Double(p.done) / Double($0) * 100) } ?? "  ?  "
