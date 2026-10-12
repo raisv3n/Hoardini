@@ -16,7 +16,7 @@ if args.first == "convert" {
 var dir = FileManager.default.currentDirectoryPath
 var conns = 8
 
-func take(_ flag: String) -> String? {
+@MainActor func take(_ flag: String) -> String? {
     guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
     let v = args[i + 1]
     args.removeSubrange(i...(i + 1))

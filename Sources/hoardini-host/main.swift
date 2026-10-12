@@ -52,7 +52,7 @@ func runCLI(_ job: JobRequest, url: URL) -> String? {
 
     let exe = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath()
         .deletingLastPathComponent().appendingPathComponent("hoardini")
-    guard fm.isExecutableFile(atPath: exe.path) else { return "hoardini binary not found next to host" }
+    guard FileManager.default.isExecutableFile(atPath: exe.path) else { return "hoardini binary not found next to host" }
 
     let p = Process()
     p.executableURL = exe
