@@ -33,7 +33,7 @@ final class DownloadManager: ObservableObject {
         try? AppPaths.privateDirectory(AppPaths.inbox)
         load()
         pollTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.pollInbox() }
+            Task { @MainActor [weak self] in self?.pollInbox() }
         }
         pump()
     }
