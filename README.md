@@ -16,14 +16,31 @@ Free for personal use (MIT). Hoardini does not download DRM-protected streams.
 - Command-line tool: `hoardini <url> [-o dir] [-n connections] [-H "Name: value"] [--name file] [--hls]`
 
 ## Install (prebuilt)
-1. Download `Hoardini.zip` from the [Releases](../../releases) page and unzip it.
-2. Run `./install.sh` in the unzipped folder. It installs the app to `/Applications`, the
-   command-line tools, and the Chrome native-messaging host.
-3. In Chrome open `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select
-   `~/Library/Application Support/Hoardini/extension`.
+Works on Apple Silicon and Intel Macs running macOS 13 or later.
 
-The app is not notarized by Apple. `install.sh` clears the quarantine flag; if you copy the app by hand
-and macOS blocks it, right-click it and choose **Open**, or run `xattr -cr /Applications/Hoardini.app`.
+1. Download `Hoardini.zip` from the [Releases](../../releases) page and unzip it.
+2. Open Terminal, type `cd ` (with a space), drag the unzipped `Hoardini` folder into the window, and press
+   Return. Then run:
+   ```sh
+   ./install.sh
+   ```
+   If macOS says it can't be opened or isn't permitted, run `bash install.sh` instead. The script:
+   - copies the app to `/Applications` (it may ask for your password),
+   - installs the command-line tools and the helper that connects Chrome to the app,
+   - copies the extension to `~/Library/Application Support/Hoardini/extension`,
+   - clears the "downloaded from the internet" flag so macOS doesn't block the app.
+3. In Chrome open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and select
+   `~/Library/Application Support/Hoardini/extension`. That folder is hidden; in the file picker press
+   ⌘⇧G and paste the path.
+
+Afterwards you can delete the downloaded zip and folder; the extension keeps working.
+
+**Why not just drag the app into Applications?** The app would run, but the Chrome extension hands
+downloads to a helper program that Chrome only allows once it is registered, which `install.sh` does.
+Without it, "Download with Hoardini" silently falls back to Chrome's normal download.
+
+The app is not notarized by Apple. If you copy it by hand and macOS blocks it, right-click it and choose
+**Open**, or run `xattr -cr /Applications/Hoardini.app`.
 
 ## Build from source
 Requires macOS 13+ and Xcode or the Command Line Tools (`xcode-select --install`).
