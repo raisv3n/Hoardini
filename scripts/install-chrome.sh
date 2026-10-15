@@ -33,4 +33,10 @@ json.dump({
 }, open(out, "w"), indent=2)
 print("extension id:", ext_id)
 PY
+for b in "BraveSoftware/Brave-Browser" "Microsoft Edge" "Chromium" "Vivaldi"; do
+  if [ -d "$HOME/Library/Application Support/$b" ]; then
+    mkdir -p "$HOME/Library/Application Support/$b/NativeMessagingHosts"
+    cp "$HOSTDIR/com.hoardini.host.json" "$HOME/Library/Application Support/$b/NativeMessagingHosts/"
+  fi
+done
 echo "Installed. Now load $(pwd)/extension as an unpacked extension in Chrome."

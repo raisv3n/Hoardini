@@ -18,13 +18,14 @@ cp -R extension "$OUT/extension"
 
 cat > "$OUT/install.sh" <<'SH'
 #!/bin/bash
-# Installs Hoardini.app, the command-line tools and the Chrome native-messaging host.
+# Installs Hoardini.app, the command-line tools, the browser extension files and the native-messaging host.
 set -euo pipefail
 cd "$(dirname "$0")"
 
-BIN="$HOME/Library/Application Support/Hoardini/bin"
-HOSTDIR="$HOME/Library/Application Support/Google/Chrome/NativeMessagingHosts"
-EXT="$HOME/Library/Application Support/Hoardini/extension"
+SUPPORT="$HOME/Library/Application Support"
+BIN="$SUPPORT/Hoardini/bin"
+HOSTDIR="$SUPPORT/Google/Chrome/NativeMessagingHosts"
+EXT="$SUPPORT/Hoardini/extension"
 
 if [ -w /Applications ]; then cp -R Hoardini.app /Applications/; else sudo cp -R Hoardini.app /Applications/; fi
 xattr -cr /Applications/Hoardini.app   # clear the download quarantine flag (app is not notarized)
@@ -43,7 +44,25 @@ json.dump({"name": "com.hoardini.host", "description": "Hoardini native host", "
            "type": "stdio", "allowed_origins": [f"chrome-extension://{ext_id}/"]}, open(out, "w"), indent=2)
 print("extension id:", ext_id)
 PY
-echo "Installed. In Chrome open chrome://extensions, enable Developer mode, Load unpacked: $EXT"
+# Other Chromium browsers look in their own folder; register there too when the browser is installed.
+for b in "BraveSoftware/Brave-Browser" "Microsoft Edge" "Chromium" "Vivaldi"; do
+  if [ -d "$SUPPORT/$b" ]; then
+    mkdir -p "$SUPPORT/$b/NativeMessagingHosts"
+    cp "$HOSTDIR/com.hoardini.host.json" "$SUPPORT/$b/NativeMessagingHosts/"
+  fi
+done
+
+printf '%s' "$EXT" | pbcopy
+cat <<MSG
+
+Installed. Last step, in your browser:
+  1. Open chrome://extensions (Brave: brave://extensions, Edge: edge://extensions).
+  2. Turn on Developer mode, click "Load unpacked".
+  3. Press Cmd+Shift+G, paste with Cmd+V (the path is on your clipboard), press Return, click Select:
+       $EXT
+Do NOT pick the "extension" folder inside this download: the browser keeps using the folder you pick,
+and the extension stops working once the download is deleted. After this you can delete the download.
+MSG
 SH
 chmod +x "$OUT/install.sh"
 

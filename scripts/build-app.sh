@@ -28,7 +28,7 @@ cat > "$STAGE/Contents/Info.plist" <<'PLIST'
   <key>CFBundleExecutable</key><string>Hoardini</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.5.6</string>
+  <key>CFBundleShortVersionString</key><string>0.5.7</string>
   <key>CFBundleVersion</key><string>1</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>NSHighResolutionCapable</key><true/>

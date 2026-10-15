@@ -28,14 +28,26 @@ Works on Apple Silicon and Intel Macs running macOS 13 or later.
    ```
    If macOS says it can't be opened or isn't permitted, run `bash install.sh` instead. The script:
    - copies the app to `/Applications` (it may ask for your password),
-   - installs the command-line tools and the helper that connects Chrome to the app,
-   - copies the extension to `~/Library/Application Support/Hoardini/extension`,
+   - installs the command-line tools and the helper that connects the browser to the app
+     (for Chrome, and for Brave, Edge, Chromium and Vivaldi if they're installed),
+   - copies the extension to `~/Library/Application Support/Hoardini/extension` and puts that path on
+     your clipboard,
    - clears the "downloaded from the internet" flag so macOS doesn't block the app.
-3. In Chrome open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and select
-   `~/Library/Application Support/Hoardini/extension`. That folder is hidden; in the file picker press
-   ⌘⇧G and paste the path.
+3. In your browser open `chrome://extensions` (Brave: `brave://extensions`, Edge: `edge://extensions`),
+   turn on **Developer mode**, and click **Load unpacked**. In the file picker press **⌘⇧G**, paste
+   with **⌘V** (`~/Library/Application Support/Hoardini/extension`), press Return and click **Select**.
 
-Afterwards you can delete the downloaded zip and folder; the extension keeps working.
+   **Don't select the `extension` folder inside the unzipped download.** The browser keeps loading the
+   extension from whichever folder you pick, so if you pick the download, the extension breaks as soon
+   as the download is deleted.
+
+Once the extension is loaded from `~/Library/Application Support/Hoardini/extension`, you can delete the
+downloaded zip and folder.
+
+**Extension stopped working after you deleted the download?** It was loaded from the download folder.
+Remove it on the extensions page, then do step 3 again. The installed copy is still in
+`~/Library/Application Support/Hoardini/extension`. If that folder is missing too, run `install.sh` again
+from a fresh download first.
 
 **Why not just drag the app into Applications?** The app would run, but the Chrome extension hands
 downloads to a helper program that Chrome only allows once it is registered, which `install.sh` does.
