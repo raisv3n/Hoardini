@@ -23,6 +23,8 @@ final class DownloadManager: ObservableObject {
     let downloadsDir = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
 
     private var tasks: [UUID: Task<Void, Never>] = [:]
+    /// Paused tasks still unwinding; a resume waits for them so it reuses their files instead of starting a new copy.
+    private var stopping: [UUID: Task<Void, Never>] = [:]
     private var lastSample: [UUID: (time: Date, bytes: Int64)] = [:]
     private var pollTimer: Timer?
 
@@ -66,7 +68,7 @@ final class DownloadManager: ObservableObject {
         items[i].status = .paused
         items[i].speed = 0
         tasks[id]?.cancel()
-        tasks[id] = nil
+        stopping[id] = tasks.removeValue(forKey: id)
         save()
         pump()
     }
@@ -81,11 +83,15 @@ final class DownloadManager: ObservableObject {
 
     /// Stops the download and deletes any partial data.
     func cancelAndRemove(_ id: UUID) {
-        tasks[id]?.cancel()
-        tasks[id] = nil
+        let running = [tasks.removeValue(forKey: id), stopping.removeValue(forKey: id)].compactMap { $0 }
+        running.forEach { $0.cancel() }
         if let i = index(id) {
             if items[i].status != .completed, let d = items[i].destination {
-                for ext in ["part", "hoardini"] { try? FileManager.default.removeItem(at: d.appendingPathExtension(ext)) }
+                // Delete only once the download has stopped writing.
+                Task {
+                    for t in running { await t.value }
+                    Partial.remove(d)
+                }
             }
             items.remove(at: i)
         }
@@ -193,7 +199,10 @@ final class DownloadManager: ObservableObject {
         // On resume keep the name the downloader chose the first time so its state file is found.
         let name = items[i].destination?.lastPathComponent ?? req.cleanFilename
 
+        let prior = stopping.removeValue(forKey: id)
         tasks[id] = Task { [weak self] in
+            await prior?.value
+            if Task.isCancelled { return }
             let onProgress: @Sendable (DownloadProgress) -> Void = { p in
                 Task { @MainActor in self?.progress(id, p) }
             }
@@ -207,6 +216,10 @@ final class DownloadManager: ObservableObject {
                 if req.isHLS {
                     let d = HLSDownloader(url: url, directory: dir, headers: req.headers, filename: name,
                                           variant: req.validVariant)
+                    d.destinationHandler = onDest
+                    out = try await d.run(progress: onProgress)
+                } else if let audio = req.validAudio {
+                    let d = PairDownloader(video: url, audio: audio, directory: dir, headers: req.headers, filename: name)
                     d.destinationHandler = onDest
                     out = try await d.run(progress: onProgress)
                 } else {
@@ -277,8 +290,8 @@ final class DownloadManager: ObservableObject {
         for i in saved.indices {
             saved[i].speed = 0
             saved[i].converting = nil     // a conversion cannot survive a quit
-            // Anything mid-flight when the app quit is resumable; HLS cannot resume, so it restarts.
-            if saved[i].status == .downloading { saved[i].status = saved[i].request.isHLS ? .queued : .paused }
+            // Anything mid-flight when the app quit is paused, ready to resume where it stopped.
+            if saved[i].status == .downloading { saved[i].status = .paused }
         }
         items = saved
     }

@@ -66,9 +66,11 @@ public enum Remux {
         export.outputURL = output
         export.outputFileType = .mp4
         export.shouldOptimizeForNetworkUse = true
-        await export.export()
+        // Pausing mid-merge stops the export; the track files stay, so resuming just merges again.
+        await withTaskCancellationHandler { await export.export() } onCancel: { export.cancelExport() }
         guard export.status == .completed else {
             try? FileManager.default.removeItem(at: output)
+            if Task.isCancelled { throw CancellationError() }
             throw RemuxError.failed(export.error?.localizedDescription ?? "unknown error")
         }
     }

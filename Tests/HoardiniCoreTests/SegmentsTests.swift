@@ -66,6 +66,27 @@ final class SegmentsTests: XCTestCase {
         XCTAssertEqual(HLS.audioURL(for: low, in: audio)?.absoluteString, "https://cdn.example/x/audio/lo.m3u8")
     }
 
+    func testRenumbersFragmentsAcrossSegments() {
+        func box(_ type: String, _ body: [UInt8]) -> [UInt8] {
+            let n = UInt32(8 + body.count)
+            return [UInt8(n >> 24), UInt8(n >> 16 & 0xff), UInt8(n >> 8 & 0xff), UInt8(n & 0xff)] + Array(type.utf8) + body
+        }
+        // A segment numbered 1 like every other one, with its fragment in front of the media data.
+        let mfhd = box("mfhd", [0, 0, 0, 0, 0, 0, 0, 1])
+        let segment = box("moof", mfhd + box("traf", [])) + box("mdat", [9, 9])
+        var next: UInt32 = 1
+        var seqs: [UInt32] = []
+        for _ in 0..<3 {
+            var d = Data(segment)
+            FMP4.renumberFragments(&d, next: &next)
+            seqs.append(d[20..<24].reduce(0) { $0 << 8 | UInt32($1) })
+            XCTAssertEqual(d.count, segment.count)
+            XCTAssertEqual(Array(d.suffix(2)), [9, 9])
+        }
+        XCTAssertEqual(seqs, [1, 2, 3])
+        XCTAssertEqual(next, 4)
+    }
+
     func testMasterWithMuxedAudioNeedsNoSeparateTrack() {
         let text = """
         #EXTM3U

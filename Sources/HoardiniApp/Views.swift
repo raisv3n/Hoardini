@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import HoardiniCore
+import UniformTypeIdentifiers
 
 private func bytes(_ n: Int64) -> String { ByteCountFormatter.string(fromByteCount: n, countStyle: .file) }
 
@@ -89,6 +90,7 @@ struct ContentView: View {
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.message = "Choose video files to convert to MP4"
+        panel.allowedContentTypes = DownloadItem.convertible.compactMap { UTType(filenameExtension: $0) }
         guard panel.runModal() == .OK else { return }
         manager.convertFiles(panel.urls)
     }
@@ -166,7 +168,11 @@ struct DownloadRow: View {
                 if item.canConvert {
                     Button { manager.convert(item.id) } label: { Image(systemName: "film") }.help("Convert to MP4")
                 }
-                Button { manager.open(item.id) } label: { Image(systemName: "play.rectangle") }.help("Open")
+                switch item.kind {
+                case .video: Button { manager.open(item.id) } label: { Image(systemName: "play.rectangle") }.help("Play")
+                case .audio: Button { manager.open(item.id) } label: { Image(systemName: "play.circle") }.help("Play")
+                case .other: Button { manager.open(item.id) } label: { Image(systemName: "arrow.up.forward.app") }.help("Open")
+                }
                 Button { manager.reveal(item.id) } label: { Image(systemName: "magnifyingglass") }.help("Show in Finder")
             default: EmptyView()
             }

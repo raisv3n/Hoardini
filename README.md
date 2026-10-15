@@ -10,10 +10,12 @@ Free for personal use (MIT). Hoardini does not download DRM-protected streams.
 
 ## Features
 - Segmented, multi-connection downloads with automatic retry and resume
-- HLS stream download, with lossless remux to MP4
+- HLS stream download (including separate audio tracks and fragmented MP4), with lossless remux to MP4
+- Pause and resume for every download, including video streams; quitting pauses instead of starting over
+- Facebook videos: pick a quality (e.g. 720p); video and audio are downloaded and merged into one MP4
 - Download queue with progress, speed and a menu bar item
 - Chrome extension: takes over browser downloads, detects videos, adds a right-click "Download with Hoardini"
-- Command-line tool: `hoardini <url> [-o dir] [-n connections] [-H "Name: value"] [--name file] [--hls]`
+- Command-line tool: `hoardini <url> [-o dir] [-n connections] [-H "Name: value"] [--name file] [--hls] [--audio url]`
 
 ## Install (prebuilt)
 Works on Apple Silicon and Intel Macs running macOS 13 or later.

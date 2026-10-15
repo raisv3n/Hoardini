@@ -1,5 +1,6 @@
 import Foundation
 import HoardiniCore
+import UniformTypeIdentifiers
 
 enum DownloadStatus: String, Codable {
     case queued, downloading, paused, completed, failed
@@ -29,12 +30,27 @@ struct DownloadItem: Identifiable, Codable, Equatable {
     /// What "Open" and "Show in Finder" should act on: the MP4 when there is one.
     var playableURL: URL? { mp4 ?? destination }
     var isConverting: Bool { converting == true }
+    /// Only video containers AVFoundation can remux losslessly into MP4 (MPEG-TS from HLS downloads).
+    static let convertible: Set<String> = ["ts", "mts", "m2ts"]
+
     var canConvert: Bool {
         status == .completed && !isConverting && mp4 == nil
-            && destination.map { !["mp4", "m4v", "mov"].contains($0.pathExtension.lowercased()) } == true
+            && destination.map { Self.convertible.contains($0.pathExtension.lowercased()) } == true
     }
 
-    var canPause: Bool { !request.isHLS && status == .downloading }
+    enum Kind { case video, audio, other }
+
+    /// What the finished file is, for picking the Open button's icon and wording.
+    var kind: Kind {
+        guard let ext = playableURL?.pathExtension.lowercased(), !ext.isEmpty else { return request.isHLS ? .video : .other }
+        if Self.convertible.contains(ext) { return .video }
+        guard let type = UTType(filenameExtension: ext) else { return .other }
+        if type.conforms(to: .movie) { return .video }
+        if type.conforms(to: .audio) { return .audio }
+        return .other
+    }
+
+    var canPause: Bool { status == .downloading }
     var isActive: Bool { status == .downloading || status == .queued }
 
     var etaSeconds: Double? {

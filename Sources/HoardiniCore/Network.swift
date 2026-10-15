@@ -42,6 +42,26 @@ enum Quarantine {
     }
 }
 
+/// The files an unfinished download leaves next to its final name.
+public enum Partial {
+    /// Hidden per-track temp file of a split (video + audio) HLS download.
+    static func trackFile(_ final: URL, _ track: String, _ ext: String) -> URL {
+        final.deletingLastPathComponent().appendingPathComponent(".\(final.lastPathComponent).\(track).\(ext)")
+    }
+
+    /// Deletes the .part file, the resume state and any HLS track temp files.
+    public static func remove(_ final: URL) {
+        let fm = FileManager.default
+        for ext in ["part", "hoardini"] { try? fm.removeItem(at: final.appendingPathExtension(ext)) }
+        let dir = final.deletingLastPathComponent()
+        let prefix = ".\(final.lastPathComponent)."
+        for f in (try? fm.contentsOfDirectory(atPath: dir.path)) ?? []
+        where f.hasPrefix(prefix) && (f.dropFirst(prefix.count).hasPrefix("video.") || f.dropFirst(prefix.count).hasPrefix("audio.")) {
+            try? fm.removeItem(at: dir.appendingPathComponent(f))
+        }
+    }
+}
+
 enum Destination {
     /// Picks a destination name nobody else is using and holds an advisory lock on it.
     /// A name is usable if we get its lock and it is either a resumable download or not yet taken.

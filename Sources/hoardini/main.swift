@@ -1,7 +1,8 @@
 import Foundation
 import HoardiniCore
 
-// usage: hoardini <url> [-o dir] [-n connections] [-H "Name: value"]... [--headers-stdin] [--name file] [--hls] [--variant url]
+// usage: hoardini <url> [-o dir] [-n connections] [-H "Name: value"]... [--headers-stdin] [--name file] [--hls] [--variant url] [--audio url]
+// --audio: <url> is a video-only file; download this audio-only file too and merge both into one MP4.
 // --headers-stdin reads more "Name: value" lines from stdin, so cookies never appear in the process list.
 var args = Array(CommandLine.arguments.dropFirst())
 
@@ -42,11 +43,12 @@ if let i = args.firstIndex(of: "--headers-stdin") {
 
 let name = take("--name")
 let variant = take("--variant").flatMap { URL(string: $0) }
+let audio = take("--audio").flatMap { URL(string: $0) }
 var forceHLS = false
 if let i = args.firstIndex(of: "--hls") { args.remove(at: i); forceHLS = true }
 
 guard let raw = args.first, let url = URL(string: raw), url.scheme?.hasPrefix("http") == true else {
-    FileHandle.standardError.write(Data("usage: hoardini <http(s) url> [-o dir] [-n connections] [-H \"Name: value\"]... [--name file] [--hls] [--variant url]\n".utf8))
+    FileHandle.standardError.write(Data("usage: hoardini <http(s) url> [-o dir] [-n connections] [-H \"Name: value\"]... [--name file] [--hls] [--variant url] [--audio url]\n".utf8))
     exit(2)
 }
 
@@ -76,6 +78,9 @@ do {
     let out: URL
     if isHLS {
         out = try await HLSDownloader(url: url, directory: outDir, headers: headers, filename: name, variant: variant).run(progress: onProgress)
+    } else if let audio {
+        out = try await PairDownloader(video: url, audio: audio, directory: outDir, headers: headers, filename: name)
+            .run(progress: onProgress)
     } else {
         out = try await Downloader(url: url, directory: outDir, connections: conns, headers: headers, filename: name)
             .run(progress: onProgress)

@@ -53,6 +53,8 @@ public final class Downloader: @unchecked Sendable {
     private let session: URLSession
     /// Called once the destination file name is settled (before bytes are written).
     public var destinationHandler: (@Sendable (URL) -> Void)?
+    /// Used as-is instead of a sanitized name: hidden track files of a paired download start with ".".
+    var exactName: String?
     private let maxRetries = 3
     private let bufferSize = 128 * 1024
 
@@ -69,7 +71,7 @@ public final class Downloader: @unchecked Sendable {
     /// Downloads to `directory`, returning the final file URL.
     public func run(progress: @escaping @Sendable (DownloadProgress) -> Void) async throws -> URL {
         let probe = try await Probe.run(url: url, headers: headers, session: session)
-        let (finalURL, lockFD) = try claimDestination(Self.finalName(override: filename, probed: probe.filename))
+        let (finalURL, lockFD) = try claimDestination(exactName ?? Self.finalName(override: filename, probed: probe.filename))
         defer { Destination.release(finalURL, fd: lockFD) }
         destinationHandler?(finalURL)
         let partURL = finalURL.appendingPathExtension("part")

@@ -10,9 +10,11 @@ public struct JobRequest: Codable, Sendable, Equatable {
     public var filename: String?
     /// HLS only: the variant playlist picked in the popup, with `url` being its master.
     public var variant: String?
+    /// File downloads only: a separate audio-only file to merge with the video-only `url` (DASH, e.g. Facebook).
+    public var audio: String?
 
     public init(url: String, referrer: String? = nil, cookies: String? = nil, userAgent: String? = nil,
-                kind: String? = nil, filename: String? = nil, variant: String? = nil) {
+                kind: String? = nil, filename: String? = nil, variant: String? = nil, audio: String? = nil) {
         self.url = url
         self.referrer = referrer
         self.cookies = cookies
@@ -20,11 +22,13 @@ public struct JobRequest: Codable, Sendable, Equatable {
         self.kind = kind
         self.filename = filename
         self.variant = variant
+        self.audio = audio
     }
 
     /// Only plain http(s) URLs with a host are accepted.
     public var validURL: URL? { Self.httpURL(url) }
     public var validVariant: URL? { variant.flatMap(Self.httpURL) }
+    public var validAudio: URL? { isHLS ? nil : audio.flatMap(Self.httpURL) }
 
     static func httpURL(_ s: String) -> URL? {
         guard let u = URL(string: s), let scheme = u.scheme?.lowercased(),
