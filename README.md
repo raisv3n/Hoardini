@@ -20,41 +20,30 @@ Free for personal use (MIT). Hoardini does not download DRM-protected streams.
 ## Install (prebuilt)
 Works on Apple Silicon and Intel Macs running macOS 13 or later.
 
-1. Download `Hoardini.zip` from the [Releases](../../releases) page and unzip it.
-2. Open Terminal, type `cd ` (with a space), drag the unzipped `Hoardini` folder into the window, and press
-   Return. Then run:
+1. Download `Hoardini-<version>-macOS.zip` from the [latest release](../../releases/latest).
+2. Unzip it and drag **Hoardini.app** into **Applications**.
+3. Open it. Hoardini isn't notarized by Apple (that needs a paid developer account), so macOS blocks it the
+   first time: try to open it, then go to **System Settings ▸ Privacy & Security**, scroll down and click
+   **Open Anyway**. Or, in Terminal:
    ```sh
-   ./install.sh
+   xattr -dr com.apple.quarantine /Applications/Hoardini.app
    ```
-   If macOS says it can't be opened or isn't permitted, run `bash install.sh` instead. The script:
-   - copies the app to `/Applications` (it may ask for your password),
-   - installs the command-line tools and the helper that connects the browser to the app
-     (for Chrome, and for Brave, Edge, Chromium and Vivaldi if they're installed),
-   - copies the extension to `~/Library/Application Support/Hoardini/extension` and puts that path on
-     your clipboard,
-   - clears the "downloaded from the internet" flag so macOS doesn't block the app.
-3. In your browser open `chrome://extensions` (Brave: `brave://extensions`, Edge: `edge://extensions`),
-   turn on **Developer mode**, and click **Load unpacked**. In the file picker press **⌘⇧G**, paste
-   with **⌘V** (`~/Library/Application Support/Hoardini/extension`), press Return and click **Select**.
+4. On first launch Hoardini installs the command-line tools and the helper that connects the browser to the
+   app (for Chrome, and for Brave, Edge, Chromium, Vivaldi and Arc if they're installed), and copies the
+   browser extension to `~/Library/Application Support/Hoardini/extension`. It then shows how to add the
+   extension, with that folder's path already on your clipboard:
+   open `chrome://extensions` (Brave: `brave://extensions`, Edge: `edge://extensions`), turn on
+   **Developer mode**, click **Load unpacked**, press **⌘⇧G**, paste with **⌘V**, press Return and click
+   **Select**. You can show these steps again from the menu bar icon ▸ **Set Up Browser Extension…**
 
-   **Don't select the `extension` folder inside the unzipped download.** The browser keeps loading the
-   extension from whichever folder you pick, so if you pick the download, the extension breaks as soon
-   as the download is deleted.
+You can delete the downloaded zip afterwards.
 
-Once the extension is loaded from `~/Library/Application Support/Hoardini/extension`, you can delete the
-downloaded zip and folder.
+**Updating:** drag the new Hoardini.app into Applications (replace the old one) and open it once. It updates
+the tools and the extension files in place. Then click the reload icon on the Hoardini extension in
+`chrome://extensions`, or restart the browser.
 
-**Extension stopped working after you deleted the download?** It was loaded from the download folder.
-Remove it on the extensions page, then do step 3 again. The installed copy is still in
-`~/Library/Application Support/Hoardini/extension`. If that folder is missing too, run `install.sh` again
-from a fresh download first.
-
-**Why not just drag the app into Applications?** The app would run, but the Chrome extension hands
-downloads to a helper program that Chrome only allows once it is registered, which `install.sh` does.
-Without it, "Download with Hoardini" silently falls back to Chrome's normal download.
-
-The app is not notarized by Apple. If you copy it by hand and macOS blocks it, right-click it and choose
-**Open**, or run `xattr -cr /Applications/Hoardini.app`.
+**Extension stopped working after you deleted a download?** It was loaded from a different folder. Remove it
+on the extensions page and load it again from `~/Library/Application Support/Hoardini/extension`.
 
 ## Build from source
 Requires macOS 13+ and Xcode or the Command Line Tools (`xcode-select --install`).
@@ -62,13 +51,14 @@ Requires macOS 13+ and Xcode or the Command Line Tools (`xcode-select --install`
 ```sh
 git clone https://github.com/raisv3n/Hoardini.git
 cd Hoardini
-./scripts/install-chrome.sh   # builds, installs to /Applications, registers the Chrome host
+./scripts/install-chrome.sh   # builds, installs to /Applications and opens the app (which registers the host)
 ```
 
-Then load the `extension/` folder as an unpacked extension (step 3 above).
+Then load the extension as in step 4 above (or load this repo's `extension/` folder when working on it).
 
 Other scripts: `./scripts/build-app.sh` builds and installs only the app, and
-`UNIVERSAL=1 ./scripts/package.sh` creates `dist/Hoardini.zip` (arm64 + Intel). `swift test` runs the tests.
+`UNIVERSAL=1 ./scripts/package.sh` creates `dist/Hoardini-<version>-macOS.zip` (arm64 + Intel). Pushing a
+`v*` tag builds and publishes that zip as a GitHub release. `swift test` runs the tests.
 
 ## How it works
 See [SPEC.md](SPEC.md) for the download behaviour (range requests, segmenting, resume rules).

@@ -222,6 +222,8 @@ struct MenuBarContent: View {
             openWindow(id: "main")
             NSApp.activate(ignoringOtherApps: true)
         }
+        Button("Set Up Browser Extension…") { BrowserSetup.showExtensionInstructions() }
+        Divider()
         Button("Quit Hoardini") { NSApp.terminate(nil) }.keyboardShortcut("q")
     }
 }

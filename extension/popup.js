@@ -120,6 +120,26 @@ async function fileSize(url) {
   } catch { return 0; }
 }
 
+// Playlists the page (or a player iframe) loaded, from its own resource timing record. The browser keeps
+// this even when the request was answered from cache and never reached the extension's listener.
+async function reportPagePlaylists(tab) {
+  let urls = [];
+  try {
+    const frames = await chrome.scripting.executeScript({
+      target: { tabId: tab.id, allFrames: true },
+      func: () => [
+        ...performance.getEntriesByType("resource").map(e => e.name),
+        ...[...document.querySelectorAll("video, video source, audio, audio source")].map(e => e.currentSrc || e.src),
+      ].filter(u => typeof u === "string" && /\.m3u8(\?|#|$)/i.test(u)),
+    });
+    urls = frames.flatMap(f => Array.isArray(f.result) ? f.result : []);
+  } catch { return; /* restricted page */ }
+  if (!urls.length) return;
+  let origin = "";
+  try { origin = new URL(tab.url).origin; } catch { /* keep empty */ }
+  await chrome.runtime.sendMessage({ type: "page-playlists", tabId: tab.id, urls: [...new Set(urls)], origin });
+}
+
 // Hide variant playlists that belong to a master we already know about.
 function visibleItems(items) {
   const children = new Set(items.flatMap(i => (i.variants || []).map(v => v.url)));
@@ -190,6 +210,7 @@ function row(item, candidates) {
 
 (async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab) await reportPagePlaylists(tab);
   const detected = tab ? visibleItems(await chrome.runtime.sendMessage({ type: "list", tabId: tab.id })) : [];
   const fb = tab ? await facebookItems(tab) : { items: [], isVideoPage: false };
   const items = [...fb.items, ...detected];

@@ -3,6 +3,14 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var onQuit: (() -> Void)?
 
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // First launch after dragging the app in: walk the user through the browser step once.
+        if BrowserSetup.install(), !UserDefaults.standard.bool(forKey: "extensionSetupShown") {
+            UserDefaults.standard.set(true, forKey: "extensionSetupShown")
+            DispatchQueue.main.async { BrowserSetup.showExtensionInstructions() }
+        }
+    }
+
     // Closing the window keeps downloading; the menu bar item stays.
     func applicationShouldTerminateAfterLastWindowClosed(_ app: NSApplication) -> Bool { false }
     func applicationWillTerminate(_ notification: Notification) { onQuit?() }

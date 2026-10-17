@@ -93,24 +93,41 @@ function updateTab(tabId, fn) {
   return queue;
 }
 
-chrome.webRequest.onHeadersReceived.addListener(async details => {
+async function addMedia(tabId, url, found, initiator) {
+  let tab;
+  try { tab = await chrome.tabs.get(tabId); } catch { return; }
+  const referrer = initiator ? initiator + "/" : tab.url;
+  let isNew = false;
+  await updateTab(tabId, items => {
+    if (items.some(i => i.url === url)) return items;
+    isNew = true;
+    return [...items, { url, kind: found.kind, size: found.size, referrer, title: tab.title || "" }];
+  });
+  if (isNew && found.kind === "hls") await enrichPlaylist(tabId, url);
+}
+
+// onResponseStarted, not onHeadersReceived: the latter is skipped for responses served from the browser
+// cache, and some sites (Kismet / GoHighLevel communities) mark their playlists cacheable for an hour,
+// so a second visit to the same video would show nothing.
+chrome.webRequest.onResponseStarted.addListener(details => {
   if (details.tabId < 0 || details.statusCode >= 400) return;
   const headers = {};
   for (const h of details.responseHeaders || []) headers[h.name.toLowerCase()] = h.value || "";
   const found = classify(details, headers);
-  if (!found) return;
-
-  let tab;
-  try { tab = await chrome.tabs.get(details.tabId); } catch { return; }
-  const referrer = details.initiator ? details.initiator + "/" : tab.url;
-  let isNew = false;
-  await updateTab(details.tabId, items => {
-    if (items.some(i => i.url === details.url)) return items;
-    isNew = true;
-    return [...items, { url: details.url, kind: found.kind, size: found.size, referrer, title: tab.title || "" }];
-  });
-  if (isNew && found.kind === "hls") enrichPlaylist(details.tabId, details.url);
+  if (found) addMedia(details.tabId, details.url, found, details.initiator);
 }, { urls: ["<all_urls>"], types: ["media", "xmlhttprequest", "other"] }, ["responseHeaders"]);
+
+// Playlists the page itself recorded loading (see popup.js). Catches what webRequest never reported:
+// in-memory cache hits, and pages loaded while the extension was not running.
+async function addPagePlaylists(tabId, urls, origin) {
+  const ok = urls.filter(u => {
+    try {
+      const x = new URL(u);
+      return /^https?:$/.test(x.protocol) && /\.m3u8$/i.test(x.pathname) && !BLOCKED_HOSTS.test(x.hostname);
+    } catch { return false; }
+  });
+  await Promise.all(ok.slice(0, 20).map(u => addMedia(tabId, u, { kind: "hls", size: 0 }, origin)));
+}
 
 // Reads an HLS playlist so the popup can group variants under their master and label qualities.
 function parseMaster(text, base) {
@@ -150,6 +167,11 @@ chrome.tabs.onRemoved.addListener(tabId => chrome.storage.session.remove(`media:
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg.type === "list") {
     chrome.storage.session.get(`media:${msg.tabId}`).then(r => reply(r[`media:${msg.tabId}`] || []));
+    return true;
+  }
+  if (msg.type === "page-playlists") {
+    addPagePlaylists(msg.tabId, Array.isArray(msg.urls) ? msg.urls.map(String) : [], msg.origin)
+      .then(() => reply({ ok: true }), () => reply({ ok: false }));
     return true;
   }
   if (msg.type === "download") {
