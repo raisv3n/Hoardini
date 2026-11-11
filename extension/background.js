@@ -33,10 +33,31 @@ async function enabled() {
 
 // ---------- browser download capture ----------
 
-chrome.downloads.onCreated.addListener(async item => {
-  if (!(await enabled())) return;
+// Only videos are taken from the browser. Everything else (.dmg, .zip, .pdf, …) stays a normal browser download.
+const VIDEO_EXT = /\.(mp4|m4v|webm|mov|mkv|avi|wmv|flv|mpe?g|3gp|ogv)$/i;
+const GENERIC_MIME = /^(|application\/octet-stream|binary\/octet-stream|application\/force-download|application\/download|application\/x-download)$/i;
+
+function extOf(name) {
+  const m = (name || "").match(/(\.[a-z0-9]{1,5})$/i);
+  return m ? m[1] : "";
+}
+
+// true = video, false = not a video, null = can't tell yet (generic MIME type and no file name so far).
+function isVideoDownload(item) {
+  const mime = (item.mime || "").split(";")[0].trim().toLowerCase();
+  if (mime.startsWith("video/")) return true;
+  if (!GENERIC_MIME.test(mime)) return false;
+  const base = (item.filename || "").split(/[\\/]/).pop();
+  let path = "";
+  try { path = new URL(item.finalUrl || item.url).pathname; } catch {}
+  for (const ext of [extOf(base), extOf(path)]) {
+    if (ext) return VIDEO_EXT.test(ext);
+  }
+  return null;
+}
+
+async function takeOver(item) {
   const url = item.finalUrl || item.url;
-  if (!/^https?:/i.test(url)) return; // leave blob:/data:/file: alone
   try {
     await chrome.downloads.cancel(item.id);
     await chrome.downloads.erase({ id: item.id });
@@ -46,6 +67,27 @@ chrome.downloads.onCreated.addListener(async item => {
     console.warn("Hoardini handoff failed, falling back to browser:", e);
     chrome.downloads.download({ url });
   }
+}
+
+// Downloads whose type was unknown at creation, waiting for Chrome to pick a file name.
+const undecided = new Set();
+
+chrome.downloads.onCreated.addListener(async item => {
+  if (!(await enabled())) return;
+  const url = item.finalUrl || item.url;
+  if (!/^https?:/i.test(url)) return; // leave blob:/data:/file: alone
+  const video = isVideoDownload(item);
+  if (video === true) await takeOver(item);
+  else if (video === null) undecided.add(item.id);
+});
+
+// The file name (from Content-Disposition) arrives after onCreated; decide then.
+chrome.downloads.onChanged.addListener(async delta => {
+  if (!undecided.has(delta.id) || !delta.filename && !delta.state) return;
+  undecided.delete(delta.id);
+  if (!delta.filename || delta.state?.current === "complete") return;
+  const [item] = await chrome.downloads.search({ id: delta.id });
+  if (item && item.state === "in_progress" && isVideoDownload(item) === true) await takeOver(item);
 });
 
 // ---------- media detection ----------
