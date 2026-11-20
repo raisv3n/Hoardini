@@ -7,9 +7,17 @@ enum Net {
         URLSession(configuration: .default, delegate: RedirectGuard(), delegateQueue: nil)
     }
 
-    /// Headers safe to send to `url`: credentials only go to the host the caller supplied them for.
+    /// Whether credentials supplied for `origin` may go to `url`: same host, and never from https down to
+    /// plain http (that would put Secure cookies on the wire unencrypted). Ports don't matter: cookies
+    /// are not port-scoped.
+    static func mayCarryCredentials(to url: URL, from origin: URL) -> Bool {
+        guard let host = url.host?.lowercased(), host == origin.host?.lowercased() else { return false }
+        return !(origin.scheme?.lowercased() == "https" && url.scheme?.lowercased() != "https")
+    }
+
+    /// Headers safe to send to `url`: credentials only go where `mayCarryCredentials` allows.
     static func headers(_ headers: [String: String], for url: URL, origin: URL) -> [String: String] {
-        guard url.host?.lowercased() != origin.host?.lowercased() else { return headers }
+        guard !mayCarryCredentials(to: url, from: origin) else { return headers }
         return headers.filter { !["cookie", "authorization"].contains($0.key.lowercased()) }
     }
 }
@@ -18,10 +26,12 @@ final class RedirectGuard: NSObject, URLSessionTaskDelegate {
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
                     newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
         var next = request
-        if request.url?.host?.lowercased() != task.originalRequest?.url?.host?.lowercased() {
-            next.setValue(nil, forHTTPHeaderField: "Cookie")
-            next.setValue(nil, forHTTPHeaderField: "Authorization")
+        if let to = request.url, let from = task.originalRequest?.url, Net.mayCarryCredentials(to: to, from: from) {
+            completionHandler(next)
+            return
         }
+        next.setValue(nil, forHTTPHeaderField: "Cookie")
+        next.setValue(nil, forHTTPHeaderField: "Authorization")
         completionHandler(next)
     }
 }

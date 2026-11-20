@@ -278,7 +278,20 @@ final class DownloadManager: ObservableObject {
 
     private func index(_ id: UUID) -> Int? { items.firstIndex { $0.id == id } }
 
+    /// Session cookies of a download that has sat unfinished (paused or failed) this long are dropped from
+    /// the queue file; they have usually expired anyway, and sending the link from the browser again brings fresh ones.
+    static let cookieLifetime: TimeInterval = 7 * 24 * 3600
+
+    private func expireCookies() {
+        let cutoff = Date().addingTimeInterval(-Self.cookieLifetime)
+        for i in items.indices where items[i].request.cookies != nil && items[i].added < cutoff
+            && (items[i].status == .paused || items[i].status == .failed) {
+            items[i].request.cookies = nil
+        }
+    }
+
     private func save() {
+        expireCookies()
         guard let data = try? JSONEncoder().encode(items) else { return }
         try? data.write(to: queueFile, options: .atomic)
         try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: queueFile.path)
@@ -294,5 +307,6 @@ final class DownloadManager: ObservableObject {
             if saved[i].status == .downloading { saved[i].status = .paused }
         }
         items = saved
+        save()   // writes the queue back without expired cookies
     }
 }

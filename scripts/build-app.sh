@@ -39,7 +39,7 @@ cat > "$STAGE/Contents/Info.plist" <<'PLIST'
 </dict></plist>
 PLIST
 
-sed -i '' "s/<string>VERSION<\/string>/<string>${HOARDINI_VERSION:-0.5.9}<\/string>/" "$STAGE/Contents/Info.plist"
+sed -i '' "s/<string>VERSION<\/string>/<string>${HOARDINI_VERSION:-0.5.10}<\/string>/" "$STAGE/Contents/Info.plist"
 plutil -lint "$STAGE/Contents/Info.plist" >/dev/null
 
 # Helpers first: the browser runs the copies made from them, which keep their own signature.
